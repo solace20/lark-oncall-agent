@@ -1,0 +1,9 @@
+# Run once every 5 minutes (legacy; macOS prefers launchd — see install-launchd.sh).
+# Install manually with: crontab -e
+#
+# Cron has a small environment — use absolute paths.
+
+SHELL=/bin/zsh
+PATH=$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+*/5 * * * * /path/to/your/project/tools/lark-oncall-agent/run-once.sh >> /tmp/lark-oncall-agent/cron.log 2>&1
