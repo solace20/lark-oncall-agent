@@ -36,13 +36,109 @@ lark_oncall_load_env() {
   TARGET_CHAT_IDS_JSON="${TARGET_CHAT_IDS_JSON:-[]}"
   REPLY_MODE="${REPLY_MODE:-send}"
 
+  AGENT_BACKEND="${AGENT_BACKEND:-cursor}"
+
   CURSOR_MODEL="${CURSOR_MODEL:-composer-2.5}"
   CURSOR_OUTPUT_FORMAT="${CURSOR_OUTPUT_FORMAT:-text}"
   CURSOR_FORCE="${CURSOR_FORCE:-false}"
   CURSOR_SANDBOX="${CURSOR_SANDBOX:-}"
 
+  CLAUDE_MODEL="${CLAUDE_MODEL:-}"
+  CLAUDE_OUTPUT_FORMAT="${CLAUDE_OUTPUT_FORMAT:-text}"
+  CLAUDE_PERMISSION_MODE="${CLAUDE_PERMISSION_MODE:-bypassPermissions}"
+  CLAUDE_SKIP_PERMISSIONS="${CLAUDE_SKIP_PERMISSIONS:-true}"
+  CLAUDE_ALLOWED_TOOLS="${CLAUDE_ALLOWED_TOOLS:-}"
+
   LOGS_CLIENT="${LOGS_CLIENT:-}"
   export LOGS_CLIENT
+}
+
+lark_oncall_agent_label() {
+  case "${AGENT_BACKEND}" in
+    claude) printf 'Claude Code' ;;
+    *) printf 'Cursor Agent CLI' ;;
+  esac
+}
+
+lark_oncall_require_agent_backend() {
+  case "${AGENT_BACKEND}" in
+    claude)
+      lark_oncall_require_bin claude
+      lark_oncall_require_bin jq
+      if ! claude auth status 2>/dev/null | jq -e '.loggedIn == true' >/dev/null; then
+        echo "Claude Code not logged in. Run: claude auth login" >&2
+        exit 1
+      fi
+      ;;
+    cursor)
+      lark_oncall_require_bin cursor
+      if ! cursor agent --help >/dev/null 2>&1; then
+        echo "cursor agent CLI not available. Upgrade Cursor CLI and verify: cursor agent --help" >&2
+        exit 1
+      fi
+      local cursor_status
+      cursor_status="$(cursor agent status 2>/dev/null || true)"
+      if [[ "${cursor_status}" != *"Logged in"* ]]; then
+        echo "Cursor Agent CLI not logged in. Run: cursor agent login" >&2
+        exit 1
+      fi
+      ;;
+    *)
+      echo "unsupported AGENT_BACKEND=${AGENT_BACKEND} (use cursor or claude)" >&2
+      exit 2
+      ;;
+  esac
+}
+
+lark_oncall_invoke_agent() {
+  local prompt="$1"
+  case "${AGENT_BACKEND}" in
+    claude)
+      local claude_args=(
+        --print
+        --output-format "${CLAUDE_OUTPUT_FORMAT}"
+        --no-session-persistence
+      )
+      if [[ -n "${CLAUDE_MODEL}" ]]; then
+        claude_args+=(--model "${CLAUDE_MODEL}")
+      fi
+      if [[ "${CLAUDE_SKIP_PERMISSIONS}" == "true" ]]; then
+        claude_args+=(--dangerously-skip-permissions)
+      elif [[ -n "${CLAUDE_PERMISSION_MODE}" ]]; then
+        claude_args+=(--permission-mode "${CLAUDE_PERMISSION_MODE}")
+      fi
+      if [[ -n "${CLAUDE_ALLOWED_TOOLS}" ]]; then
+        claude_args+=(--allowed-tools "${CLAUDE_ALLOWED_TOOLS}")
+      fi
+      (
+        cd "${WORKSPACE_ROOT}"
+        claude "${claude_args[@]}" "${prompt}"
+      )
+      ;;
+    cursor)
+      local cursor_args=(
+        agent
+        --print
+        --trust
+        --workspace "${WORKSPACE_ROOT}"
+        --output-format "${CURSOR_OUTPUT_FORMAT}"
+      )
+      if [[ -n "${CURSOR_MODEL}" ]]; then
+        cursor_args+=(--model "${CURSOR_MODEL}")
+      fi
+      if [[ -n "${CURSOR_SANDBOX}" ]]; then
+        cursor_args+=(--sandbox "${CURSOR_SANDBOX}")
+      fi
+      if [[ "${CURSOR_FORCE}" == "true" ]]; then
+        cursor_args+=(--force)
+      fi
+      cursor "${cursor_args[@]}" "${prompt}"
+      ;;
+    *)
+      echo "unsupported AGENT_BACKEND=${AGENT_BACKEND} (use cursor or claude)" >&2
+      return 2
+      ;;
+  esac
 }
 
 lark_oncall_require_bin() {

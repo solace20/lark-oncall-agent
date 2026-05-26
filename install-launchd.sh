@@ -44,21 +44,24 @@ validate_instance_id() {
 
 echo "== Checking dependencies =="
 require_bin lark-cli
-require_bin cursor
 require_bin jq
 
-if ! cursor agent --help >/dev/null 2>&1; then
-  echo "cursor agent CLI not available. Upgrade Cursor CLI and verify: cursor agent --help" >&2
-  exit 1
-fi
+AGENT_BACKEND="$(prompt_with_default "Agent backend (cursor or claude)" "cursor")"
+case "${AGENT_BACKEND}" in
+  cursor|claude) ;;
+  *)
+    echo "AGENT_BACKEND must be cursor or claude" >&2
+    exit 1
+    ;;
+esac
 
-CURSOR_STATUS="$(cursor agent status 2>/dev/null || true)"
-if [[ "${CURSOR_STATUS}" != *"Logged in"* ]]; then
-  echo "Cursor Agent CLI not logged in. Run: cursor agent login" >&2
-  exit 1
-fi
+# Validate selected agent CLI before continuing install prompts.
+# shellcheck disable=SC1091
+source "${TOOL_DIR}/lib/common.sh"
+export AGENT_BACKEND
+lark_oncall_require_agent_backend
 
-echo "Dependencies OK."
+echo "Dependencies OK (${AGENT_BACKEND})."
 echo
 
 INSTANCE_ID="$(prompt_with_default "Instance name (for multiple jobs on one Mac)" "default")"
@@ -71,12 +74,12 @@ LOG_DIR="/tmp/lark-oncall-agent/${INSTANCE_ID}"
 HANDLED_FILE="${LOG_DIR}/handled_at_msg_ids.txt"
 LOCK_DIR="/tmp/lark-oncall-agent-${INSTANCE_ID}.lock"
 
-WORKSPACE_ROOT_INPUT="$(prompt_with_default "Workspace root (code Cursor should read)" "$(pwd)")"
+WORKSPACE_ROOT_INPUT="$(prompt_with_default "Workspace root (code the agent should read)" "$(pwd)")"
 WORKSPACE_ROOT="$(cd "${WORKSPACE_ROOT_INPUT}" && pwd)"
 MENTION_NAME="$(prompt_with_default "Your display name for @ matching" "OnCall")"
 GROUP_NAMES_INPUT="$(prompt_with_default "Target chat names (#-separated)" "Engineering On-call#Platform Alerts")"
 TARGET_CHAT_NAMES_JSON="$(json_array_from_hash_list "${GROUP_NAMES_INPUT}")"
-SCAN_INTERVAL_SECONDS="$(prompt_with_default "Light poll interval seconds (Cursor only on @ hit)" "60")"
+SCAN_INTERVAL_SECONDS="$(prompt_with_default "Light poll interval seconds (agent only on @ hit)" "60")"
 WINDOW_MINUTES="$(prompt_with_default "Message lookback minutes (~2-3x interval)" "3")"
 
 if [[ "${TARGET_CHAT_NAMES_JSON}" == "[]" ]]; then
@@ -93,6 +96,7 @@ TARGET_CHAT_NAMES_JSON_ENV="$(shell_quote "${TARGET_CHAT_NAMES_JSON}")"
 
 echo
 echo "Install configuration:"
+echo "  backend: ${AGENT_BACKEND}"
 echo "  instance: ${INSTANCE_ID}"
 echo "  label: ${LABEL}"
 echo "  workspace: ${WORKSPACE_ROOT}"
@@ -120,10 +124,17 @@ REPLY_IN_THREAD=true
 TARGET_CHAT_IDS_JSON='[]'
 TARGET_CHAT_NAMES_JSON=${TARGET_CHAT_NAMES_JSON_ENV}
 
+AGENT_BACKEND=${AGENT_BACKEND}
+
 CURSOR_MODEL=composer-2.5
 CURSOR_OUTPUT_FORMAT=text
 CURSOR_FORCE=true
 CURSOR_SANDBOX=
+
+CLAUDE_MODEL=
+CLAUDE_OUTPUT_FORMAT=text
+CLAUDE_PERMISSION_MODE=bypassPermissions
+CLAUDE_SKIP_PERMISSIONS=true
 
 # Optional logs CLI (set LOGS_CLIENT after installing your logs skill)
 # LOGS_CLIENT=

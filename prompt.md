@@ -1,6 +1,6 @@
 # Fixed task: Feishu @ on-call duty
 
-Each time `run-once.sh` invokes you via Cursor Agent CLI, complete one scan, analysis, and reply cycle. Only process target chats, time window, and mention name from runtime parameters.
+Each time `run-once.sh` invokes you via Cursor Agent CLI or Claude Code, complete one scan, analysis, and reply cycle. Only process target chats, time window, and mention name from runtime parameters.
 
 ## Hard constraints
 
@@ -89,7 +89,7 @@ One-line confirmations, missing-parameter prompts, or very short retry notices.
 
 ### Tool priority (trace / call chain / implementation)
 
-1. **MCP** (`codegraph_*`) when available in Cursor CLI.
+1. **MCP** (`codegraph_*`) when available in the agent CLI.
 2. **CLI** (from `workspace_root`):
    - `codegraph status`
    - `codegraph query "<symbol>" --limit 10`

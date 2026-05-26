@@ -6,7 +6,7 @@ TOOL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${TOOL_DIR}/lib/common.sh"
 
 lark_oncall_load_env
-lark_oncall_require_bin cursor
+lark_oncall_require_agent_backend
 lark_oncall_require_bin lark-cli
 lark_oncall_require_bin jq
 lark_oncall_prepare_chat_targets
@@ -32,8 +32,10 @@ if [[ -n "${LOGS_CLIENT}" && -f "${LOGS_CLIENT}" ]]; then
   LOGS_HINT="logs_client=${LOGS_CLIENT} (optional; see prompt.md). Default production; test env PLATFORM_ENV=test; search window <3h."
 fi
 
+AGENT_LABEL="$(lark_oncall_agent_label)"
+
 RUNTIME_PROMPT="$(cat <<EOF
-You are a local Cursor CLI IM on-call agent. This run only handles Feishu group messages in the last ${WINDOW_MINUTES} minutes that @${MENTION_NAME}.
+You are a local ${AGENT_LABEL} IM on-call agent. This run only handles Feishu group messages in the last ${WINDOW_MINUTES} minutes that @${MENTION_NAME}.
 
 Runtime parameters:
 - run_id: ${RUN_ID}
@@ -58,24 +60,4 @@ EOF
 FIXED_PROMPT="$(<"${PROMPT_FILE}")"
 PROMPT="${RUNTIME_PROMPT}"$'\n'"${FIXED_PROMPT}"
 
-CURSOR_ARGS=(
-  agent
-  --print
-  --trust
-  --workspace "${WORKSPACE_ROOT}"
-  --output-format "${CURSOR_OUTPUT_FORMAT}"
-)
-
-if [[ -n "${CURSOR_MODEL}" ]]; then
-  CURSOR_ARGS+=(--model "${CURSOR_MODEL}")
-fi
-
-if [[ -n "${CURSOR_SANDBOX}" ]]; then
-  CURSOR_ARGS+=(--sandbox "${CURSOR_SANDBOX}")
-fi
-
-if [[ "${CURSOR_FORCE}" == "true" ]]; then
-  CURSOR_ARGS+=(--force)
-fi
-
-cursor "${CURSOR_ARGS[@]}" "${PROMPT}"
+lark_oncall_invoke_agent "${PROMPT}"
