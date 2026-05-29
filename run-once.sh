@@ -39,6 +39,7 @@ You are a local ${AGENT_LABEL} IM on-call agent. This run only handles Feishu gr
 
 Runtime parameters:
 - run_id: ${RUN_ID}
+- agent_mode: ${AGENT_MODE} (ask = read-only; do not edit source code under workspace_root)
 - workspace_root: ${WORKSPACE_ROOT}
 - mention_name: ${MENTION_NAME}
 - start_iso: ${START_ISO}

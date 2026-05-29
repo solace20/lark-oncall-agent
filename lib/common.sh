@@ -37,6 +37,7 @@ lark_oncall_load_env() {
   REPLY_MODE="${REPLY_MODE:-send}"
 
   AGENT_BACKEND="${AGENT_BACKEND:-cursor}"
+  AGENT_MODE="${AGENT_MODE:-ask}"
 
   CURSOR_MODEL="${CURSOR_MODEL:-composer-2.5}"
   CURSOR_OUTPUT_FORMAT="${CURSOR_OUTPUT_FORMAT:-text}"
@@ -45,9 +46,10 @@ lark_oncall_load_env() {
 
   CLAUDE_MODEL="${CLAUDE_MODEL:-}"
   CLAUDE_OUTPUT_FORMAT="${CLAUDE_OUTPUT_FORMAT:-text}"
-  CLAUDE_PERMISSION_MODE="${CLAUDE_PERMISSION_MODE:-bypassPermissions}"
-  CLAUDE_SKIP_PERMISSIONS="${CLAUDE_SKIP_PERMISSIONS:-true}"
+  CLAUDE_PERMISSION_MODE="${CLAUDE_PERMISSION_MODE:-plan}"
+  CLAUDE_SKIP_PERMISSIONS="${CLAUDE_SKIP_PERMISSIONS:-false}"
   CLAUDE_ALLOWED_TOOLS="${CLAUDE_ALLOWED_TOOLS:-}"
+  CLAUDE_DISALLOWED_TOOLS="${CLAUDE_DISALLOWED_TOOLS:-Edit,Write,NotebookEdit,MultiEdit}"
 
   LOGS_CLIENT="${LOGS_CLIENT:-}"
   export LOGS_CLIENT
@@ -102,11 +104,25 @@ lark_oncall_invoke_agent() {
       if [[ -n "${CLAUDE_MODEL}" ]]; then
         claude_args+=(--model "${CLAUDE_MODEL}")
       fi
-      if [[ "${CLAUDE_SKIP_PERMISSIONS}" == "true" ]]; then
-        claude_args+=(--dangerously-skip-permissions)
-      elif [[ -n "${CLAUDE_PERMISSION_MODE}" ]]; then
-        claude_args+=(--permission-mode "${CLAUDE_PERMISSION_MODE}")
-      fi
+      case "${AGENT_MODE}" in
+        ask|plan)
+          claude_args+=(--permission-mode plan)
+          if [[ -n "${CLAUDE_DISALLOWED_TOOLS}" ]]; then
+            claude_args+=(--disallowed-tools "${CLAUDE_DISALLOWED_TOOLS}")
+          fi
+          ;;
+        agent|write|full)
+          if [[ "${CLAUDE_SKIP_PERMISSIONS}" == "true" ]]; then
+            claude_args+=(--dangerously-skip-permissions)
+          elif [[ -n "${CLAUDE_PERMISSION_MODE}" ]]; then
+            claude_args+=(--permission-mode "${CLAUDE_PERMISSION_MODE}")
+          fi
+          ;;
+        *)
+          echo "unsupported AGENT_MODE=${AGENT_MODE} (use ask, plan, or agent)" >&2
+          return 2
+          ;;
+      esac
       if [[ -n "${CLAUDE_ALLOWED_TOOLS}" ]]; then
         claude_args+=(--allowed-tools "${CLAUDE_ALLOWED_TOOLS}")
       fi
@@ -126,12 +142,26 @@ lark_oncall_invoke_agent() {
       if [[ -n "${CURSOR_MODEL}" ]]; then
         cursor_args+=(--model "${CURSOR_MODEL}")
       fi
-      if [[ -n "${CURSOR_SANDBOX}" ]]; then
-        cursor_args+=(--sandbox "${CURSOR_SANDBOX}")
-      fi
-      if [[ "${CURSOR_FORCE}" == "true" ]]; then
-        cursor_args+=(--force)
-      fi
+      case "${AGENT_MODE}" in
+        ask)
+          cursor_args+=(--mode ask)
+          ;;
+        plan)
+          cursor_args+=(--mode plan)
+          ;;
+        agent|write|full)
+          if [[ -n "${CURSOR_SANDBOX}" ]]; then
+            cursor_args+=(--sandbox "${CURSOR_SANDBOX}")
+          fi
+          if [[ "${CURSOR_FORCE}" == "true" ]]; then
+            cursor_args+=(--force)
+          fi
+          ;;
+        *)
+          echo "unsupported AGENT_MODE=${AGENT_MODE} (use ask, plan, or agent)" >&2
+          return 2
+          ;;
+      esac
       cursor "${cursor_args[@]}" "${prompt}"
       ;;
     *)

@@ -71,18 +71,15 @@ tools/lark-oncall-agent/install-launchd.sh
 
 ```bash
 AGENT_BACKEND=claude
+AGENT_MODE=ask
 MENTION_NAME=OnCall
 WINDOW_MINUTES=3
 SCAN_INTERVAL_SECONDS=60
 REPLY_MODE=send
 TARGET_CHAT_NAMES_JSON='["Engineering On-call","Platform Alerts"]'
-
-# Claude Code（AGENT_BACKEND=claude 时）
-CLAUDE_SKIP_PERMISSIONS=true
-
-# Cursor（AGENT_BACKEND=cursor 时）
-CURSOR_FORCE=true
 ```
+
+`AGENT_MODE=ask`（默认）为只读模式：可分析代码、查日志、发飞书回复，**不会修改仓库源码**。如需允许改代码，显式设为 `AGENT_MODE=agent`。
 
 首次验证建议：
 
@@ -214,18 +211,15 @@ Example `.env`:
 
 ```bash
 AGENT_BACKEND=claude
+AGENT_MODE=ask
 MENTION_NAME=OnCall
 WINDOW_MINUTES=3
 SCAN_INTERVAL_SECONDS=60
 REPLY_MODE=send
 TARGET_CHAT_NAMES_JSON='["Engineering On-call","Platform Alerts"]'
-
-# Claude Code (when AGENT_BACKEND=claude)
-CLAUDE_SKIP_PERMISSIONS=true
-
-# Cursor (when AGENT_BACKEND=cursor)
-CURSOR_FORCE=true
 ```
+
+`AGENT_MODE=ask` (default) is read-only: analyze code, query logs, and reply on Feishu — **no source code edits**. Set `AGENT_MODE=agent` explicitly to allow writes.
 
 First run:
 

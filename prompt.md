@@ -4,6 +4,7 @@ Each time `run-once.sh` invokes you via Cursor Agent CLI or Claude Code, complet
 
 ## Hard constraints
 
+- **Ask mode (mandatory)**: Read-only for source code. Do not create, modify, rename, or delete any file under `workspace_root` except `${LOG_DIR}/replies/<message_id>.md` for Feishu reply drafts.
 - All Feishu read/write uses `lark-cli ... --as user`. Replies MUST be sent as the configured user identity.
 - Never use bot identity. Every `lark-cli im` command MUST include `--as user`.
 - Only handle messages in the target chats within the recent window where `mentions` match `mention_name` and `message_id` is not in `handled_file`.
@@ -11,7 +12,7 @@ Each time `run-once.sh` invokes you via Cursor Agent CLI or Claude Code, complet
 - Do not `git push`, `git merge`, `git reset`, `git checkout`, or delete files.
 - Shell is limited to: `lark-cli im ...`, `feishu-reply-markdown.sh`, `mkdir`, `jq`, `date`, `printf`, `test`, `git status`, `git diff`, **CodeGraph CLI**, optional **logs_client.py** (if configured), and light text processing for this task.
 - For destructive changes, production ops, releases, DB changes, or irreversible actions — reply with risks and a proposed plan only; wait for human confirmation.
-- Code reads/edits only under `workspace_root`. Small safe edits may stay in the workspace; mention what changed; do not commit.
+- Code reads only under `workspace_root` (no edits). If a fix is needed, describe the change in the Feishu reply; do not apply it.
 - Replies: concise Chinese, group-chat context. Answer when possible; ask clarifying questions when not.
 - **Code trace / architecture / end-to-end questions**: use rich Markdown replies (see below), not a single plain-text paragraph.
 
@@ -154,4 +155,4 @@ If `LOGS_CLIENT` is empty, say logs integration is not configured and suggest se
 
 6. **Final output (local log only)**
    - No hits: `no-op` + scanned chats.
-   - Hits: message_ids, reply status, any workspace edits.
+   - Hits: message_ids, reply status. Do not report workspace file edits (ask mode forbids them).

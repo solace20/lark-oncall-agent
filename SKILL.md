@@ -54,10 +54,10 @@ chmod +x tools/lark-oncall-agent/setup-logs-permissions.sh
 LOGS_CLIENT=/path/to/logs_client.py tools/lark-oncall-agent/setup-logs-permissions.sh
 ```
 
-Set `LOGS_CLIENT` in `.env`. For unattended runs:
+Set `LOGS_CLIENT` in `.env`. For unattended runs with logs access:
 
-- **Cursor**: `CURSOR_FORCE=true` and leave `CURSOR_SANDBOX` empty if the logs endpoint needs network access
-- **Claude**: keep `CLAUDE_SKIP_PERMISSIONS=true` (or `CLAUDE_PERMISSION_MODE=bypassPermissions`)
+- **ask/plan mode (default)**: read-only; no source edits. Cursor uses `--mode ask`; Claude uses `--permission-mode plan` and blocks Edit/Write tools.
+- **agent mode** (opt-in): set `AGENT_MODE=agent`. Cursor may use `CURSOR_FORCE=true`; Claude may use `CLAUDE_SKIP_PERMISSIONS=true` if needed.
 
 Feishu user auth (one-time):
 
@@ -95,6 +95,7 @@ First validation: set `REPLY_MODE=dry-run` in `.env`.
 Copy [env.example](env.example) to `.env.<instance>`:
 
 - `AGENT_BACKEND` — `cursor` (default) or `claude`
+- `AGENT_MODE` — `ask` (default, read-only), `plan`, or `agent` (allows writes)
 - `WORKSPACE_ROOT` — agent workspace root
 - `MENTION_NAME` — name matched in @mentions (default `OnCall`)
 - `TARGET_CHAT_NAMES_JSON` / `TARGET_CHAT_IDS_JSON` — monitored chats
